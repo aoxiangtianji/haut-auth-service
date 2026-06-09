@@ -19,8 +19,8 @@ start_service() {
 	procd_open_instance
 	procd_set_param command /usr/bin/python3 /usr/lib/python3/haut-auth/main.py
 	procd_set_param env HAUT_USERNAME="$username"
-	procd_set_param env HAUT_PASSWORD="$password"
-	procd_set_param env HAUT_AUTH_IP="$auth_ip"
+	procd_append_param env HAUT_PASSWORD="$password"
+	procd_append_param env HAUT_AUTH_IP="$auth_ip"
 	procd_set_param stderr 1
 	procd_set_param stdout 1
 	procd_set_param respawn
