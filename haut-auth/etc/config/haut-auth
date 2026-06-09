@@ -1,0 +1,6 @@
+
+config haut-auth 'main'
+	option enabled '0'
+	option username ''
+	option password ''
+	option auth_ip 'http://172.16.154.130/'

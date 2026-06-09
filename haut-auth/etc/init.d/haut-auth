@@ -1,0 +1,28 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+
+start_service() {
+	config_load 'haut-auth'
+	local enabled username password auth_ip
+
+	config_get_bool enabled main enabled 0
+	[ "$enabled" -eq 0 ] && return
+
+	config_get username main username
+	config_get password main password
+	config_get auth_ip main auth_ip 'http://172.16.154.130/'
+
+	[ -z "$username" ] || [ -z "$password" ] && return
+
+	procd_open_instance
+	procd_set_param command /usr/bin/python3 /usr/lib/python3/haut-auth/main.py
+	procd_set_param env HAUT_USERNAME="$username"
+	procd_set_param env HAUT_PASSWORD="$password"
+	procd_set_param env HAUT_AUTH_IP="$auth_ip"
+	procd_set_param stderr 1
+	procd_set_param stdout 1
+	procd_set_param respawn
+	procd_close_instance
+}

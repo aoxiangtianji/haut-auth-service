@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# OpenWrt build artifacts (usually at top level or in SDK)
+/bin/
+/build_dir/
+/staging_dir/
+/dl/
+/feeds/
+*.ipk
+
+# Build / Distribution (anchored to top level to avoid ignoring source folders like usr/lib)
+/build/
+/dist/
+/out/
+
+# OS and Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+# (Add any other project-specific ignores here)
