@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=haut-auth
-PKG_VERSION:=0.1.1
+PKG_VERSION:=0.1.2
 PKG_RELEASE:=1
 
 include $(INCLUDE_DIR)/package.mk
@@ -10,7 +10,7 @@ define Package/haut-auth
   SECTION:=net
   CATEGORY:=Network
   TITLE:=HAUT Campus Network Auth Service
-  DEPENDS:=+python3-light +python3-urllib +python3-openssl
+  DEPENDS:=+python3-light +python3-urllib +python3-openssl +python3-codecs
   PKGARCH:=all
 endef
 
