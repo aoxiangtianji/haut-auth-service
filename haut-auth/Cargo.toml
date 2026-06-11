@@ -1,0 +1,30 @@
+[package]
+name = "haut-auth"
+version = "0.2.0"
+edition = "2021"
+description = "HAUT campus network auth service (Srun protocol), Rust rewrite"
+license = "MIT"
+
+[[bin]]
+name = "haut-auth"
+path = "src/main.rs"
+
+# Crypto comes from the audited RustCrypto crates (pure Rust, no_std-capable,
+# no C deps) so it cross-compiles cleanly for OpenWrt. Only xEncode (Srun's
+# reversible protocol obfuscation, not a security primitive) is implemented
+# in-tree. HTTP and JSON are kept in-tree to avoid pulling a TLS stack.
+[dependencies]
+md-5 = { version = "0.11", default-features = false }
+sha1 = { version = "0.11", default-features = false, features = ["alloc"] }
+hmac = { version = "0.13", default-features = false }
+base64 = { version = "0.22", default-features = false, features = ["alloc"] }
+# Robust JSON parsing for the portal responses (handles \uXXXX escapes, nested
+# values, and key collisions that the previous hand-rolled extractor missed).
+serde_json = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -1,39 +1,37 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-.pytest_cache/
-.coverage
-htmlcov/
+# --- Rust ---
+# Build output. Cargo.lock is committed on purpose: this is a binary crate and
+# the OpenWrt Makefile copies Cargo.lock into the build dir for reproducible builds.
+target/
+**/*.rs.bk
+*.pdb
 
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-
-# OpenWrt build artifacts (usually at top level or in SDK)
+# --- OpenWrt build artifacts ---
+# Generated when building inside an SDK / buildroot tree. Anchored to the repo
+# root so source dirs like etc/config are never accidentally ignored.
 /bin/
 /build_dir/
 /staging_dir/
 /dl/
 /feeds/
+/tmp/
 *.ipk
+*.apk
 
-# Build / Distribution (anchored to top level to avoid ignoring source folders like usr/lib)
-/build/
-/dist/
-/out/
+# --- Secrets / local config ---
+# Never commit real credentials (the Srun portal needs username/password).
+.env
+*.local
 
-# OS and Editor
+# --- OS files ---
 .DS_Store
+Thumbs.db
+
+# --- Editor / IDE ---
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
-# Project specific
-# (Add any other project-specific ignores here)
+# --- Project Specific ---
+*.html
