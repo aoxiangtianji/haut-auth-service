@@ -120,13 +120,19 @@ fn request_once(url: &Url, jar: &CookieJar, timeout: Duration) -> Result<RawResp
     stream.set_write_timeout(Some(timeout))?;
     let mut stream = stream;
 
+    let host_header = if url.port == 80 {
+        url.host.clone()
+    } else {
+        format!("{}:{}", url.host, url.port)
+    };
+
     let mut req = format!(
         "GET {} HTTP/1.1\r\n\
          Host: {}\r\n\
          User-Agent: {}\r\n\
          Accept: */*\r\n\
          Connection: close\r\n",
-        url.path, url.host, USER_AGENT
+        url.path, host_header, USER_AGENT
     );
     if let Some(cookie) = cookie_header(jar) {
         req.push_str(&format!("Cookie: {cookie}\r\n"));

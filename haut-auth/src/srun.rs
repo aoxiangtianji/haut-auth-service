@@ -349,4 +349,67 @@ mod tests {
             .collect();
         assert!(!ips.iter().any(|ip| *ip != me));
     }
+
+    #[test]
+    #[ignore = "real HAUT campus network diagnostic; requires HAUT_USERNAME and HAUT_PASSWORD"]
+    fn real_sso_occupancy_check_diagnostic() {
+        let username = std::env::var("HAUT_USERNAME")
+            .expect("set HAUT_USERNAME to run this real-network diagnostic");
+        let password = std::env::var("HAUT_PASSWORD")
+            .expect("set HAUT_PASSWORD to run this real-network diagnostic");
+        let auth_ip =
+            std::env::var("HAUT_AUTH_IP").unwrap_or_else(|_| "http://172.16.154.130/".to_string());
+        let portal_ip =
+            std::env::var("HAUT_PORTAL_IP").unwrap_or_else(|_| "172.16.154.130".to_string());
+
+        let mut counter = JQueryCounter::new();
+        let callback = counter.callback_name();
+        let timestamp = counter.timestamp();
+        let encrypted_username = username_encrypt(&username);
+        let url_head = if auth_ip.ends_with('/') {
+            format!("{auth_ip}cgi-bin/")
+        } else {
+            format!("{auth_ip}/cgi-bin/")
+        };
+
+        let challenge = get_challenge(&url_head, &callback, timestamp, &encrypted_username)
+            .expect("get_challenge failed; are you inside the campus network?");
+
+        let pwd_md5 = md5_hex(password.as_bytes());
+        let auth_str = format!("{username}:{pwd_md5}");
+        let auth_b64 = base64_standard(auth_str.as_bytes());
+        let sso_url = format!(
+            "http://{portal_ip}:8800/site/sso?data={}",
+            urlencode(&auth_b64)
+        );
+        let body = http::get(&sso_url, HTTP_TIMEOUT).expect("SSO request failed");
+        let extracted_ips = extract_ips(&body);
+        let result = is_account_in_use(&username, &password, &challenge.client_ip, &portal_ip);
+
+        let page_kind = if body.contains("没有找到数据") {
+            "NoData"
+        } else if body.contains("用户名") && body.contains("IP地址") {
+            "OnlineTable"
+        } else if body.contains("login-form")
+            || body.contains("请输入用户名")
+            || body.contains("请输入密码")
+        {
+            "LoginPage"
+        } else {
+            "Unknown"
+        };
+
+        println!("client_ip from challenge: {}", challenge.client_ip);
+        println!("portal_ip: {portal_ip}");
+        println!("SSO response length: {} bytes", body.len());
+        println!("SSO page kind: {page_kind}");
+        println!("IPs extracted from SSO response: {extracted_ips:?}");
+        println!("is_account_in_use result: {result}");
+
+        if std::env::var("HAUT_PRINT_SSO_BODY").as_deref() == Ok("1") {
+            println!("--- SSO body begin ---");
+            println!("{body}");
+            println!("--- SSO body end ---");
+        }
+    }
 }
