@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=haut-auth
-PKG_VERSION:=0.2.0
+PKG_VERSION:=0.2.1
 PKG_RELEASE:=1
 
 # Build the in-tree Cargo project. Sources (Cargo.toml, Cargo.lock, src/) live

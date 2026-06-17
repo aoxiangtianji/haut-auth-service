@@ -1,65 +1,98 @@
 # haut-auth-service
 
-An automation service for HAUT (Henan University of Technology) campus network authentication, packaged for OpenWrt. Originally a Python script, now rewritten in Rust for a small memory footprint.
+HAUT (Henan University of Technology) campus-network auto-authentication service for OpenWrt.
 
-## Key Features
+This package runs a small Rust daemon under OpenWrt `procd`. It checks network connectivity periodically and performs Srun login when offline.
 
-- **Automated Authentication**: Implements the Srun protocol to handle campus network login automatically.
-- **Low Memory Footprint**: Rewritten in Rust with no Python interpreter and no TLS stack (the portal is plaintext HTTP). The audited RustCrypto crates provide the hashing/MAC primitives; only Srun's reversible `xEncode` obfuscation is implemented in-tree.
-- **No fork overhead**: Connectivity is checked with a native TCP probe instead of forking the `ping` binary, avoiding the fork-time memory spike.
-- **Service Integration**: Fully integrated with OpenWrt's `procd` for automatic startup, crash recovery, and process management.
-- **Native Configuration**: Uses OpenWrt's standard UCI configuration (`/etc/config/haut-auth`) for persistent settings.
+## Features
+
+- Rust implementation with low memory usage
+- OpenWrt `procd` service integration
+- UCI configuration via `/etc/config/haut-auth`
+- Native TCP connectivity probe instead of spawning `ping`
+- Optional check for whether the account is already online on another device
 
 ## Configuration
 
 Settings live in `/etc/config/haut-auth`:
 
-```
+```sh
 config haut-auth 'main'
 	option enabled '0'
 	option username ''
 	option password ''
 	option auth_ip 'http://172.16.154.130/'
 	option ping_target '223.5.5.5'
+	option check_other_device_online '1'
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `enabled` | Set to `1` to enable the service. | `0` |
-| `username` | Campus network account username. | (empty) |
-| `password` | Campus network account password. | (empty) |
-| `auth_ip` | Base URL of the Srun authentication portal. | `http://172.16.154.130/` |
-| `ping_target` | Host probed (TCP port 53) to detect connectivity. | `223.5.5.5` |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `0` | Set to `1` to enable the service. |
+| `username` | empty | Campus-network account username. |
+| `password` | empty | Campus-network account password. |
+| `auth_ip` | `http://172.16.154.130/` | Srun authentication portal URL. |
+| `ping_target` | `223.5.5.5` | Host used for connectivity checks on TCP port `53`. |
+| `check_other_device_online` | `1` | Set to `0` to skip checking whether the account is already online on another device. |
 
-After editing, restart the service:
+Example:
 
 ```sh
+uci set haut-auth.main.enabled='1'
+uci set haut-auth.main.username='your_username'
+uci set haut-auth.main.password='your_password'
+uci set haut-auth.main.check_other_device_online='0'
+uci commit haut-auth
 /etc/init.d/haut-auth restart
 ```
 
-## How it works
+## Environment Variables
 
-Every 30 seconds the daemon opens a short-lived TCP connection to `ping_target:53`. If that fails, it runs the Srun handshake:
+The init script maps UCI options to environment variables before starting the daemon:
 
-1. **get_challenge** — fetch a one-time token and the client IP.
-2. **occupancy check** — query the self-service SSO portal to skip login if the account is already in use by another device.
-3. **srun_portal login** — submit the encrypted credentials (HMAC-MD5 password, `xEncode`+custom-Base64 `info` blob, SHA-1 checksum).
+| UCI option | Environment variable |
+|------------|----------------------|
+| `username` | `HAUT_USERNAME` |
+| `password` | `HAUT_PASSWORD` |
+| `auth_ip` | `HAUT_AUTH_IP` |
+| `ping_target` | `HAUT_PING_TARGET` |
+| `check_other_device_online` | `HAUT_CHECK_OTHER_DEVICE_ONLINE` |
 
-After a successful login it periodically reports the logged-in user's traffic and session time.
+`HAUT_CHECK_OTHER_DEVICE_ONLINE` accepts `1/true/yes/on` or `0/false/no/off`. Invalid or missing values default to enabled.
+
+## Service Commands
+
+```sh
+/etc/init.d/haut-auth enable
+/etc/init.d/haut-auth start
+/etc/init.d/haut-auth restart
+/etc/init.d/haut-auth stop
+```
+
+## How It Works
+
+Every 30 seconds, the daemon probes `ping_target:53`.
+
+If offline, it runs the Srun flow:
+
+1. Get challenge token and client IP
+2. Optionally check whether the account is online on another device
+3. Submit login request
+4. Print user traffic/session info after login
 
 ## Building
 
-The package is built from the in-tree Cargo project (`Cargo.toml` + `src/`) using OpenWrt's Rust toolchain. From an OpenWrt SDK with the `rust` feed available:
+From an OpenWrt SDK:
 
 ```sh
 make package/haut-auth/compile
 ```
 
-For local development outside the SDK:
+For local development:
 
 ```sh
 cd haut-auth
-cargo test          # run the unit tests
+cargo test
 cargo build --release
 ```
 

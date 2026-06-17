@@ -51,12 +51,13 @@ fn main() {
         Ok(v) if !v.is_empty() => v,
         _ => DEFAULT_PING_TARGET.to_string(),
     };
+    let check_other_device_online = env_bool("HAUT_CHECK_OTHER_DEVICE_ONLINE", true);
 
     let encrypted_username = username_encrypt(&username);
     let url_head = join_url(&base_url, "cgi-bin/");
 
     log_info(&format!(
-        "haut-auth started. portal={base_url} probe={ping_target}:{PROBE_PORT}"
+        "haut-auth started. portal={base_url} probe={ping_target}:{PROBE_PORT} check_other_device_online={check_other_device_online}"
     ));
 
     let mut last_user_info_time: u64 = 0;
@@ -66,7 +67,13 @@ fn main() {
             log_debug("Connection alive.");
         } else {
             log_warning("Not connected to internet. Starting authentication...");
-            let outcome = authenticate(&url_head, &encrypted_username, &username, &password);
+            let outcome = authenticate(
+                &url_head,
+                &encrypted_username,
+                &username,
+                &password,
+                check_other_device_online,
+            );
 
             let now = now_secs();
             let should_show_info = matches!(outcome, AuthResult::LoggedIn)
@@ -113,6 +120,7 @@ fn authenticate(
     encrypted_username: &str,
     raw_username: &str,
     password: &str,
+    check_other_device_online: bool,
 ) -> AuthResult {
     let mut ac_id = "1".to_string();
 
@@ -136,12 +144,16 @@ fn authenticate(
         ));
 
         // Step 1.5: occupancy check
-        if is_account_in_use(raw_username, password, &challenge.client_ip, PORTAL_IP) {
-            log_warning(&format!(
-                "Account is currently used by another device (not {}). Skipping login...",
-                challenge.client_ip
-            ));
-            return AuthResult::Skipped;
+        if check_other_device_online {
+            if is_account_in_use(raw_username, password, &challenge.client_ip, PORTAL_IP) {
+                log_warning(&format!(
+                    "Account is currently used by another device (not {}). Skipping login...",
+                    challenge.client_ip
+                ));
+                return AuthResult::Skipped;
+            }
+        } else {
+            log_debug("Skipping other-device online check.");
         }
 
         // Step 2: login
@@ -211,6 +223,17 @@ fn now_secs() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+fn env_bool(name: &str, default: bool) -> bool {
+    match env::var(name) {
+        Ok(v) => match v.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "yes" | "on" => true,
+            "0" | "false" | "no" | "off" => false,
+            _ => default,
+        },
+        Err(_) => default,
+    }
 }
 
 // ---------------------------------------------------------------------------
