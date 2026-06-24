@@ -8,25 +8,12 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Environments
+# Secrets / local config
 .env
-.venv
-env/
-venv/
-ENV/
+*.local
 
-# OpenWrt build artifacts (usually at top level or in SDK)
-/bin/
-/build_dir/
-/staging_dir/
-/dl/
-/feeds/
-*.ipk
-
-# Build / Distribution (anchored to top level to avoid ignoring source folders like usr/lib)
-/build/
-/dist/
-/out/
+# Rust build artifacts (from cross-branch usage)
+target/
 
 # OS and Editor
 .DS_Store
