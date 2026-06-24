@@ -1,100 +1,63 @@
-# haut-auth-service
+# haut-auth
 
-HAUT (Henan University of Technology) campus-network auto-authentication service for OpenWrt.
+HAUT (Henan University of Technology) campus-network auto-authentication daemon, written in Rust.
 
-This package runs a small Rust daemon under OpenWrt `procd`. It checks network connectivity periodically and performs Srun login when offline.
+A lightweight background service that monitors network connectivity and automatically performs Srun portal login when offline.
 
 ## Features
 
-- Rust implementation with low memory usage
-- OpenWrt `procd` service integration
-- UCI configuration via `/etc/config/haut-auth`
-- Native TCP connectivity probe instead of spawning `ping`
+- Pure Rust, minimal dependencies — no TLS stack, no Python runtime needed
+- Native TCP connectivity probe (no `ping` fork)
 - Optional check for whether the account is already online on another device
+- Runs on any Linux system; also packaged for OpenWrt (see `_openwrt_feed/`)
+
+## Quick Start
+
+```sh
+cargo build --release
+
+export HAUT_USERNAME=your_username
+export HAUT_PASSWORD=your_password
+./target/release/haut-auth
+```
 
 ## Configuration
 
-Settings live in `/etc/config/haut-auth`:
+All settings are passed via environment variables:
 
-```sh
-config haut-auth 'main'
-	option enabled '0'
-	option username ''
-	option password ''
-	option auth_ip 'http://172.16.154.130/'
-	option ping_target '223.5.5.5'
-	option check_other_device_online '1'
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HAUT_USERNAME` | *(required)* | Campus-network account username |
+| `HAUT_PASSWORD` | *(required)* | Campus-network account password |
+| `HAUT_AUTH_IP` | `http://172.16.154.130/` | Srun authentication portal URL |
+| `HAUT_PING_TARGET` | `223.5.5.5` | Host for connectivity checks (TCP port 53) |
+| `HAUT_CHECK_OTHER_DEVICE_ONLINE` | `1` | Set to `0` to skip other-device online check |
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `enabled` | `0` | Set to `1` to enable the service. |
-| `username` | empty | Campus-network account username. |
-| `password` | empty | Campus-network account password. |
-| `auth_ip` | `http://172.16.154.130/` | Srun authentication portal URL. |
-| `ping_target` | `223.5.5.5` | Host used for connectivity checks on TCP port `53`. |
-| `check_other_device_online` | `1` | Set to `0` to skip checking whether the account is already online on another device. |
-
-Example:
-
-```sh
-uci set haut-auth.main.enabled='1'
-uci set haut-auth.main.username='your_username'
-uci set haut-auth.main.password='your_password'
-uci set haut-auth.main.check_other_device_online='0'
-uci commit haut-auth
-/etc/init.d/haut-auth restart
-```
-
-## Environment Variables
-
-The init script maps UCI options to environment variables before starting the daemon:
-
-| UCI option | Environment variable |
-|------------|----------------------|
-| `username` | `HAUT_USERNAME` |
-| `password` | `HAUT_PASSWORD` |
-| `auth_ip` | `HAUT_AUTH_IP` |
-| `ping_target` | `HAUT_PING_TARGET` |
-| `check_other_device_online` | `HAUT_CHECK_OTHER_DEVICE_ONLINE` |
-
-`HAUT_CHECK_OTHER_DEVICE_ONLINE` accepts `1/true/yes/on` or `0/false/no/off`. Invalid or missing values default to enabled.
-
-## Service Commands
-
-```sh
-/etc/init.d/haut-auth enable
-/etc/init.d/haut-auth start
-/etc/init.d/haut-auth restart
-/etc/init.d/haut-auth stop
-```
+`HAUT_CHECK_OTHER_DEVICE_ONLINE` accepts `1`/`true`/`yes`/`on` or `0`/`false`/`no`/`off`.
 
 ## How It Works
 
-Every 30 seconds, the daemon probes `ping_target:53`.
+Every 30 seconds, the daemon probes `HAUT_PING_TARGET:53` via TCP.
 
-If offline, it runs the Srun flow:
+If offline, it runs the Srun authentication flow:
 
 1. Get challenge token and client IP
 2. Optionally check whether the account is online on another device
 3. Submit login request
 4. Print user traffic/session info after login
 
+## Platform-Specific Packaging
+
+- **OpenWrt**: See `_openwrt_feed/` for the Makefile, UCI config, and procd init script. These will be moved to a separate OpenWrt feed repository.
+- **systemd (generic Linux)**: A systemd service unit and environment file will be provided in `contrib/systemd/`.
+
 ## Building
 
-From an OpenWrt SDK:
-
 ```sh
-make package/haut-auth/compile
-```
-
-For local development:
-
-```sh
-cd haut-auth
-cargo test
 cargo build --release
 ```
+
+The binary is self-contained — copy it to any Linux machine and run it with the required environment variables.
 
 ## License
 

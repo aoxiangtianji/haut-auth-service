@@ -1,8 +1,0 @@
-
-config haut-auth 'main'
-	option enabled '0'
-	option username ''
-	option password ''
-	option auth_ip 'http://172.16.154.130/'
-	option ping_target '223.5.5.5'
-	option check_other_device_online '1'
